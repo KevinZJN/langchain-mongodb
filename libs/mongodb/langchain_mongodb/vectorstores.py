@@ -12,6 +12,7 @@ from typing import (
     Optional,
     Tuple,
     TypeVar,
+    Sequence,
     Union,
 )
 
@@ -807,3 +808,19 @@ class MongoDBAtlasVectorSearch(VectorStore):
             filters=filters or [],
             wait_until_complete=wait_until_complete,
         )  # type: ignore [operator]
+
+    def get_by_ids(
+        self,
+        ids: Sequence[str],
+    ) -> List[Document]:
+        filter = {}
+        docs = []
+        if ids:
+            oids = [str_to_oid(i) for i in ids]
+            filter = {"_id": {"$in": oids}}
+            cursor = self._collection.find(filter)
+            for res in cursor:
+                text = res.pop(self._text_key)
+                make_serializable(res)
+                docs.append(Document(page_content=text, metadata=res))
+        return docs
